@@ -1,39 +1,143 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { listStores } from '../../services/storeApi';
-import { formatAvg } from '../../utils/format';
+import { submitRating, updateRating } from '../../services/ratingApi';
+import { useToast } from '../../context/ToastContext';
 import StarRating from '../../components/StarRating';
+import RatingModal from '../../components/RatingModal';
 import Pagination from '../../components/Pagination';
-import Loading from '../../components/Loading';
-import ErrorBox from '../../components/ErrorBox';
 import { initials } from '../../utils/format';
 
 const PAGE_SIZE = 9;
 
-const STORE_COLORS = [
-  { bg: 'bg-blue-50', icon: 'text-blue-600' },
-  { bg: 'bg-emerald-50', icon: 'text-emerald-600' },
-  { bg: 'bg-violet-50', icon: 'text-violet-600' },
-  { bg: 'bg-amber-50', icon: 'text-amber-600' },
-  { bg: 'bg-rose-50', icon: 'text-rose-600' },
-  { bg: 'bg-cyan-50', icon: 'text-cyan-600' },
-  { bg: 'bg-fuchsia-50', icon: 'text-fuchsia-600' },
-  { bg: 'bg-lime-50', icon: 'text-lime-600' },
+const STORE_GRADIENTS = [
+  'from-blue-500 to-blue-600',
+  'from-emerald-500 to-emerald-600',
+  'from-violet-500 to-violet-600',
+  'from-amber-500 to-amber-600',
+  'from-rose-500 to-rose-600',
+  'from-cyan-500 to-cyan-600',
+  'from-fuchsia-500 to-fuchsia-600',
+  'from-lime-500 to-lime-600',
 ];
+
+const STORE_ICONS = ['storefront', 'shop', 'local_mall', 'business', 'domain', 'apartment', 'home_repair_service', 'build'];
 
 function ratingBadgeClass(avg) {
   if (avg > 0) return 'bg-primary text-on-primary';
   return 'bg-surface-container-high text-on-surface-variant';
 }
 
+const SORT_OPTIONS = [
+  { value: 'name', label: 'Name' },
+  { value: 'averageRating', label: 'Rating' },
+  { value: 'createdAt', label: 'Newest' },
+];
+
+const FILTER_OPTIONS = [
+  { value: '', label: 'All Stores' },
+  { value: 'rated', label: 'Stores I Rated' },
+  { value: 'unrated', label: "Stores I Haven't Rated" },
+  { value: 'highlyRated', label: 'Highly Rated (4+)' },
+];
+
+function SkeletonCard() {
+  return (
+    <article className="skeleton-card rounded-xl border border-outline-variant p-6 flex flex-col">
+      <div className="flex justify-between items-start mb-4">
+        <div className="skeleton-shimmer w-12 h-12 rounded-lg" />
+        <div className="skeleton-shimmer w-20 h-6 rounded-full" />
+      </div>
+      <div className="skeleton-shimmer w-3/4 h-5 rounded mb-2" />
+      <div className="skeleton-shimmer w-full h-4 rounded mb-1" />
+      <div className="skeleton-shimmer w-2/3 h-4 rounded mb-6" />
+      <div className="mt-auto pt-4 border-t border-outline-variant flex items-center justify-between">
+        <div className="skeleton-shimmer w-24 h-4 rounded" />
+        <div className="skeleton-shimmer w-28 h-9 rounded-lg" />
+      </div>
+    </article>
+  );
+}
+
+function StatsBanner({ totalStores, avgRating, totalRatings }) {
+  return (
+    <div className="w-full rounded-xl mb-6 border border-outline-variant overflow-hidden">
+      <div className="bg-gradient-to-r from-primary via-primary-container to-primary p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="flex items-center gap-4">
+            <span className="material-symbols-outlined text-[32px] text-on-primary">storefront</span>
+            <div>
+              <div className="font-display-lg text-display-lg text-on-primary leading-none">{totalStores}</div>
+              <div className="font-label-md text-label-md text-on-primary/80">Total Stores</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="material-symbols-outlined text-[32px] text-on-primary">star</span>
+            <div>
+              <div className="font-display-lg text-display-lg text-on-primary leading-none">{avgRating}</div>
+              <div className="font-label-md text-label-md text-on-primary/80">Average Rating</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="material-symbols-outlined text-[32px] text-on-primary">rate_review</span>
+            <div>
+              <div className="font-display-lg text-display-lg text-on-primary leading-none">{totalRatings}</div>
+              <div className="font-label-md text-label-md text-on-primary/80">Total Ratings</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ isSearch }) {
+  return (
+    <div className="empty-state">
+      <div className="es-icon">
+        <span className="material-symbols-outlined text-[28px]">storefront</span>
+      </div>
+      <h4>{isSearch ? 'No stores match your search' : 'No stores registered yet'}</h4>
+      {isSearch && <p className="mt-1 text-sm">Try a different name or address.</p>}
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }) {
+  return (
+    <div className="error-box flex-col items-center text-center">
+      <span className="material-symbols-outlined text-[32px] mb-2">error</span>
+      <p className="mb-3">{message}</p>
+      {onRetry && (
+        <button
+          type="button"
+          className="h-9 px-4 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors"
+          onClick={onRetry}
+        >
+          Retry
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function UserDashboard() {
   const { search: debouncedSearch } = useOutletContext();
+  const toast = useToast();
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
+  const [filterBy, setFilterBy] = useState('');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [selectedStore, setSelectedStore] = useState(null);
+  const [ratingBusy, setRatingBusy] = useState(false);
+
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,151 +168,329 @@ export default function UserDashboard() {
       setSortOrder('asc');
     }
     setPage(1);
+    setSortDropdownOpen(false);
   };
 
-  const totalStores = data?.total ?? 0;
-  const avgRating = data?.items?.length
-    ? (data.items.reduce((sum, s) => sum + (s.averageRating || 0), 0) / data.items.length).toFixed(1)
+  const handleFilter = (value) => {
+    setFilterBy(value);
+    setPage(1);
+    setFilterDropdownOpen(false);
+  };
+
+  const handleClearSort = (e) => {
+    e.stopPropagation();
+    setSortBy('name');
+    setSortOrder('asc');
+    setPage(1);
+  };
+
+  const handleClearFilter = (e) => {
+    e.stopPropagation();
+    setFilterBy('');
+    setPage(1);
+  };
+
+  const handleOpenRatingModal = (store) => {
+    setSelectedStore(store);
+    setRatingModalOpen(true);
+  };
+
+  const handleCloseRatingModal = () => {
+    setRatingModalOpen(false);
+    setSelectedStore(null);
+  };
+
+  const handleSubmitRating = async (rating) => {
+    if (!selectedStore) return;
+    setRatingBusy(true);
+    try {
+      if (selectedStore.userRating) {
+        await updateRating(selectedStore.id, rating);
+        toast.success('Rating updated!');
+      } else {
+        await submitRating(selectedStore.id, rating);
+        toast.success('Rating submitted!');
+      }
+      handleCloseRatingModal();
+      load();
+    } catch (err) {
+      toast.error(err.message || 'Failed to submit rating');
+    } finally {
+      setRatingBusy(false);
+    }
+  };
+
+  const handleStarClick = async (store, rating) => {
+    setRatingBusy(true);
+    try {
+      if (store.userRating) {
+        await updateRating(store.id, rating);
+        toast.success('Rating updated!');
+      } else {
+        await submitRating(store.id, rating);
+        toast.success('Rating submitted!');
+      }
+      load();
+    } catch (err) {
+      toast.error(err.message || 'Failed to submit rating');
+    } finally {
+      setRatingBusy(false);
+    }
+  };
+
+  const isSortActive = sortBy !== 'name' || sortOrder !== 'asc';
+  const isFilterActive = filterBy !== '';
+  const activeFilterLabel = FILTER_OPTIONS.find((o) => o.value === filterBy)?.label || '';
+
+  const filteredItems = data?.items?.filter((store) => {
+    if (!filterBy) return true;
+    if (filterBy === 'rated') return store.userRating != null;
+    if (filterBy === 'unrated') return store.userRating == null;
+    if (filterBy === 'highlyRated') return (store.averageRating || 0) >= 4;
+    return true;
+  }) || [];
+
+  const totalStores = data?.items?.length || 0;
+  const avgRating = totalStores
+    ? (data.items.reduce((sum, s) => sum + (s.averageRating || 0), 0) / totalStores).toFixed(1)
     : '—';
+  const totalRatings = data?.total || 0;
 
-  if (loading) return <Loading label="Loading stores…" />;
-  if (error) return <ErrorBox message={error} />;
-
-  if (!data || data.items.length === 0) {
-    return (
-      <div className="py-8 text-center">
-        <span className="material-symbols-outlined text-5xl text-on-surface-variant mb-3 block">storefront</span>
-        <h3 className="font-headline-md text-headline-md text-on-surface">
-          {debouncedSearch ? 'No stores match your search' : 'No stores registered yet'}
-        </h3>
-        {debouncedSearch && (
-          <p className="font-body-md text-body-md text-on-surface-variant mt-2">
-            Try a different name or address.
-          </p>
-        )}
-      </div>
-    );
-  }
+  if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
     <div>
       {/* Page Header */}
-      <div className="mb-space-xl flex flex-col md:flex-row md:items-end justify-between gap-space-md">
+      <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="font-display-lg text-display-lg text-on-surface mb-space-sm">
-            Discover &amp; rate stores
-          </h2>
-          <p className="font-body-lg text-body-lg text-on-surface-variant">
-            Search stores by name or address and share your rating.
-          </p>
+          <h2 className="text-2xl font-bold text-on-surface mb-1">Discover &amp; rate stores</h2>
+          <p className="text-sm text-on-surface-variant">Search stores by name or address and share your rating.</p>
         </div>
-        <div className="flex gap-space-sm">
-          <button
-            className="h-9 px-space-md rounded-lg border border-outline text-on-surface font-label-md text-label-md hover:bg-surface-container-low transition-colors flex items-center gap-space-xs"
-            aria-label="Filter"
-          >
-            <span className="material-symbols-outlined text-[18px]">filter_list</span>
-            Filter
-          </button>
-          <button
-            className="h-9 px-space-md rounded-lg border border-outline text-on-surface font-label-md text-label-md hover:bg-surface-container-low transition-colors flex items-center gap-space-xs"
-            onClick={handleSort}
-            aria-label="Sort"
-          >
-            <span className="material-symbols-outlined text-[18px]">sort</span>
-            Sort
-          </button>
+        <div className="flex gap-2 relative">
+          {/* Filter Button */}
+          <div className="relative">
+            <button
+              type="button"
+              className={`h-9 px-3 rounded-lg border font-label-md text-label-md transition-all duration-150 flex items-center gap-1.5 ${
+                isFilterActive
+                  ? 'bg-primary text-on-primary border-primary shadow-sm'
+                  : 'border-outline text-on-surface hover:bg-surface-container-low'
+              }`}
+              onClick={() => { setFilterDropdownOpen(!filterDropdownOpen); setSortDropdownOpen(false); }}
+              aria-label="Filter"
+            >
+              <span className="material-symbols-outlined text-[18px]">filter_list</span>
+              Filter
+              {isFilterActive && (
+                <span className="ml-1 w-5 h-5 rounded-full bg-white/25 text-[11px] font-bold flex items-center justify-center">
+                  1
+                </span>
+              )}
+            </button>
+            {filterDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1 bg-surface border border-outline-variant rounded-lg shadow-lg z-50 min-w-[200px] py-1">
+                {FILTER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`w-full text-left px-3 py-2 text-[13px] hover:bg-surface-container-low transition-colors flex items-center justify-between ${
+                      filterBy === opt.value ? 'bg-primary/10 text-primary font-semibold' : 'text-on-surface'
+                    }`}
+                    onClick={() => handleFilter(opt.value)}
+                  >
+                    <span>{opt.label}</span>
+                    {filterBy === opt.value && (
+                      <span className="material-symbols-outlined text-[16px]">check</span>
+                    )}
+                  </button>
+                ))}
+                {isFilterActive && (
+                  <div className="border-t border-outline-variant mt-1 pt-1">
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-[13px] text-danger hover:bg-danger-bg transition-colors flex items-center gap-2"
+                      onClick={handleClearFilter}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">close</span>
+                      Clear filter
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Sort Button */}
+          <div className="relative">
+            <button
+              type="button"
+              className={`h-9 px-3 rounded-lg border font-label-md text-label-md transition-all duration-150 flex items-center gap-1.5 ${
+                isSortActive
+                  ? 'bg-primary text-on-primary border-primary shadow-sm'
+                  : 'border-outline text-on-surface hover:bg-surface-container-low'
+              }`}
+              onClick={() => { setSortDropdownOpen(!sortDropdownOpen); setFilterDropdownOpen(false); }}
+              aria-label="Sort"
+            >
+              <span className="material-symbols-outlined text-[18px]">sort</span>
+              Sort
+              {isSortActive && (
+                <span className="material-symbols-outlined text-[14px]">
+                  {sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                </span>
+              )}
+            </button>
+            {sortDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1 bg-surface border border-outline-variant rounded-lg shadow-lg z-50 min-w-[160px] py-1">
+                {SORT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`w-full text-left px-3 py-2 text-[13px] hover:bg-surface-container-low transition-colors flex items-center justify-between ${
+                      sortBy === opt.value ? 'bg-primary/10 text-primary font-semibold' : 'text-on-surface'
+                    }`}
+                    onClick={() => handleSort(opt.value)}
+                  >
+                    <span>{opt.label}</span>
+                    {sortBy === opt.value && (
+                      <span className="material-symbols-outlined text-[16px]">
+                        {sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                      </span>
+                    )}
+                  </button>
+                ))}
+                {isSortActive && (
+                  <div className="border-t border-outline-variant mt-1 pt-1">
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-[13px] text-danger hover:bg-danger-bg transition-colors flex items-center gap-2"
+                      onClick={handleClearSort}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">close</span>
+                      Reset sort
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Active filter/sort chips */}
+      {(isFilterActive || isSortActive) && (
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <span className="text-xs text-on-surface-variant">Active:</span>
+          {isFilterActive && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+              {activeFilterLabel}
+              <button type="button" onClick={handleClearFilter} className="hover:text-primary/70">
+                <span className="material-symbols-outlined text-[14px]">close</span>
+              </button>
+            </span>
+          )}
+          {isSortActive && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+              {SORT_OPTIONS.find((o) => o.value === sortBy)?.label} {sortOrder === 'asc' ? '↑' : '↓'}
+              <button type="button" onClick={handleClearSort} className="hover:text-primary/70">
+                <span className="material-symbols-outlined text-[14px]">close</span>
+              </button>
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Stats Banner */}
-      <div className="w-full rounded-xl mb-space-xl border border-outline-variant overflow-hidden">
-        <div className="bg-gradient-to-r from-primary via-primary-container to-primary p-space-lg">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-space-lg">
-            <div className="flex items-center gap-space-md">
-              <span className="material-symbols-outlined text-[32px] text-on-primary">storefront</span>
-              <div>
-                <div className="font-display-lg text-display-lg text-on-primary leading-none">{totalStores}</div>
-                <div className="font-label-md text-label-md text-on-primary/80">Total Stores</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-space-md">
-              <span className="material-symbols-outlined text-[32px] text-on-primary">star</span>
-              <div>
-                <div className="font-display-lg text-display-lg text-on-primary leading-none">{avgRating}</div>
-                <div className="font-label-md text-label-md text-on-primary/80">Average Rating</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-space-md">
-              <span className="material-symbols-outlined text-[32px] text-on-primary">rate_review</span>
-              <div>
-                <div className="font-display-lg text-display-lg text-on-primary leading-none">{data.total}</div>
-                <div className="font-label-md text-label-md text-on-primary/80">Total Ratings</div>
-              </div>
-            </div>
-          </div>
-          <div className="mt-space-md pt-space-md border-t border-white/20">
-            <p className="font-body-md text-body-md text-on-primary/90">
-              Browse stores, read reviews, and share your own ratings to help others discover the best places.
-            </p>
-          </div>
+      <StatsBanner totalStores={totalStores} avgRating={avgRating} totalRatings={totalRatings} />
+
+      {/* Loading Skeleton */}
+      {loading && !data && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
-      </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && !error && (!data || data.items.length === 0) && (
+        <EmptyState isSearch={!!debouncedSearch} />
+      )}
 
       {/* Store Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg">
-        {data.items.map((store, idx) => {
-          const color = STORE_COLORS[idx % STORE_COLORS.length];
-          const avg = Number(store.averageRating || 0);
-          return (
-            <article
-              key={store.id}
-              className="bg-surface rounded-xl border border-outline-variant p-space-lg flex flex-col hover:border-primary hover:shadow-md transition-all duration-200 group"
-            >
-              {/* Card header: icon + rating badge */}
-              <div className="flex justify-between items-start mb-space-md">
-                <div className={`w-12 h-12 rounded-lg ${color.bg} flex items-center justify-center`}>
-                  <span className={`material-symbols-outlined text-[24px] ${color.icon}`}>storefront</span>
+      {!loading && data && data.items.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredItems.map((store, idx) => {
+            const gradient = STORE_GRADIENTS[idx % STORE_GRADIENTS.length];
+            const icon = STORE_ICONS[idx % STORE_ICONS.length];
+            const avg = Number(store.averageRating || 0);
+            const userRating = store.userRating;
+            return (
+              <article
+                key={store.id}
+                className="store-card-hover bg-surface rounded-xl border border-outline-variant flex flex-col transition-all duration-150 ease-out hover:shadow-lg hover:-translate-y-1 hover:border-primary/40 group"
+              >
+                {/* Card gradient header */}
+                <div className={`relative bg-gradient-to-br ${gradient} px-5 py-5 flex items-center justify-between`}>
+                  <div className="w-12 h-12 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[24px] text-white">{icon}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm">
+                    <span className="material-symbols-outlined text-[14px] text-white" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      star
+                    </span>
+                    <span className="text-white font-bold text-sm">
+                      {avg > 0 ? avg.toFixed(1) : '—'}
+                    </span>
+                  </div>
                 </div>
-                <div className={`px-2 py-1 rounded-full flex items-center gap-1 font-label-md text-label-md ${ratingBadgeClass(avg)}`}>
-                  <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                    star
-                  </span>
-                  {avg > 0 ? `${avg.toFixed(1)} / 5` : 'No ratings'}
-                </div>
-              </div>
 
-              {/* Store name + address */}
-              <h3 className="font-headline-md text-headline-md text-on-surface mb-space-xs group-hover:text-primary transition-colors">
-                {store.name}
-              </h3>
-              <p className="font-body-md text-body-md text-on-surface-variant flex items-start gap-1 mb-space-lg">
-                <span className="material-symbols-outlined text-[16px] mt-0.5 flex-shrink-0">location_on</span>
-                <span className="line-clamp-2">{store.address || 'No address provided'}</span>
-              </p>
+                {/* Card body */}
+                <div className="px-5 py-4 flex flex-col flex-1">
+                  <h3 className="font-headline-md text-headline-md text-on-surface mb-1 group-hover:text-primary transition-colors duration-150">
+                    {store.name}
+                  </h3>
+                  <p className="text-sm text-on-surface-variant flex items-start gap-1.5 mb-4">
+                    <span className="material-symbols-outlined text-[16px] mt-0.5 flex-shrink-0">location_on</span>
+                    <span className="line-clamp-2">{store.address || 'No address provided'}</span>
+                  </p>
 
-              {/* Card footer: your rating + action */}
-              <div className="mt-auto pt-space-md border-t border-outline-variant flex items-center justify-between gap-2">
-                <div className="flex flex-col gap-0.5 min-w-0">
-                  <span className="font-caption text-caption text-on-surface-variant">Your Rating</span>
-                  <StarRating value={0} readOnly sizeClass="stars-sm" />
+                  {/* Card footer */}
+                  <div className="mt-auto pt-4 border-t border-outline-variant flex items-center justify-between gap-2">
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-xs text-on-surface-variant">Your Rating</span>
+                      {userRating ? (
+                        <StarRating
+                          value={userRating}
+                          readOnly
+                          sizeClass="stars-sm"
+                        />
+                      ) : (
+                        <StarRating
+                          value={0}
+                          onChange={(val) => handleStarClick(store, val)}
+                          sizeClass="stars-sm"
+                          disabled={ratingBusy}
+                        />
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="h-9 px-4 shrink-0 rounded-lg font-label-md text-label-md transition-all duration-150 active:scale-95 btn-rating"
+                      onClick={() => handleOpenRatingModal(store)}
+                      disabled={ratingBusy}
+                    >
+                      {userRating ? 'Modify' : 'Rate Now'}
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  className="h-[36px] px-space-md shrink-0 bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:bg-primary-container hover:text-on-primary-container transition-colors"
-                  onClick={() => alert('Submit rating for: ' + store.name)}
-                >
-                  Submit Rating
-                </button>
-              </div>
-            </article>
-          );
-        })}
-      </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
 
       {/* Pagination */}
-      {data.items.length > 0 && (
-        <div className="mt-space-lg border border-outline-variant rounded-xl bg-surface overflow-hidden">
+      {!loading && data && filteredItems.length > 0 && (
+        <div className="mt-6 border border-outline-variant rounded-xl bg-surface overflow-hidden">
           <Pagination
             page={data.page}
             totalPages={data.totalPages}
@@ -217,6 +499,18 @@ export default function UserDashboard() {
             onPageChange={(p) => setPage(p)}
           />
         </div>
+      )}
+
+      {/* Rating Modal */}
+      {selectedStore && (
+        <RatingModal
+          open={ratingModalOpen}
+          onClose={handleCloseRatingModal}
+          store={selectedStore}
+          existing={selectedStore.userRating}
+          busy={ratingBusy}
+          onSubmit={handleSubmitRating}
+        />
       )}
     </div>
   );

@@ -74,7 +74,7 @@ export default function RegisterPage() {
   };
 
   const inputClass = (hasError) =>
-    `w-full rounded-lg border bg-white py-3 pl-10 pr-3 text-[14px] leading-[20px] text-on-surface outline-none transition placeholder:text-on-surface-variant/60 ${
+    `w-full rounded-lg border bg-surface-container-lowest py-3 pl-10 pr-3 text-[14px] leading-[20px] text-on-surface outline-none transition placeholder:text-on-surface-variant/60 ${
       hasError ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20' : 'border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20'
     }`;
 

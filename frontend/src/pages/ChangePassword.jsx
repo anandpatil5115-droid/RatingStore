@@ -135,7 +135,7 @@ export default function ChangePassword() {
             </button>
             <button
               type="button"
-              className="rounded-lg border border-outline-variant bg-white px-4 py-3 text-[12px] font-semibold uppercase tracking-wider text-on-surface transition hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 text-[12px] font-semibold uppercase tracking-wider text-on-surface transition hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60"
               onClick={() => navigate(homeFor(user.role))}
             >
               Cancel

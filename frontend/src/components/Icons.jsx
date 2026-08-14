@@ -128,3 +128,14 @@ export const SettingsIcon = ({ size = 20 }) => (
     <path d="M16.24 7a2 2 0 0 1 1.48 1.86l1.83 5.43a2 2 0 0 1-2.86 0L14.7 7a2 2 0 0 1 1.24-1.32l1.83-5.43a2 2 0 0 1 2.86 0z" />
   </svg>
 );
+
+export const ThemeIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3a9 9 0 1 0 9 9 4 4 0 0 1-5-5 4 4 0 0 1-5-5" />
+    <path d="M8.5 8.5v.01" />
+    <path d="M16 15.5v.01" />
+    <path d="M12 12v.01" />
+    <path d="M11 17v.01" />
+    <path d="M7 14v.01" />
+  </svg>
+);
