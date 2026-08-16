@@ -151,7 +151,7 @@ export default function MainLayout() {
                 <input
                   className="w-full h-10 pl-10 pr-12 rounded-full bg-surface-container border border-outline-variant focus:bg-surface-container-low focus:border-primary focus:ring-1 focus:ring-primary font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant transition-colors"
                   placeholder="Search stores by name or address..."
-                  value={debouncedQuery}
+                  value={query}
                   onChange={searchChange}
                   aria-label="Search stores"
                 />
