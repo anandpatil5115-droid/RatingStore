@@ -3,9 +3,12 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import useDebounce from '../hooks/useDebounce';
 import { roleLabel, initials } from '../utils/format';
-import { GridIcon, StoreIcon, UsersIcon, StarRatingIcon, LockIcon, UserIcon, MenuIcon, SettingsIcon, NotificationsIcon, ThemeIcon } from '../components/Icons';
+import { GridIcon, StoreIcon, UsersIcon, StarRatingIcon, LockIcon, LogoutIcon, UserIcon, MenuIcon, SettingsIcon, NotificationsIcon, SearchIcon, ThemeIcon } from '../components/Icons';
+import { homeFor } from '../pages/HomeLink';
 
 const SidebarContext = createContext({ search: '', setSearch: () => {} });
+
+const SIDEBAR_WIDTH = '260px';
 
 function getChangePasswordPath(role) {
   if (role === 'SYSTEM_ADMIN') return '/admin/change-password';
@@ -89,11 +92,11 @@ export default function MainLayout() {
       <div className="flex min-h-screen w-full bg-background text-on-background">
         {/* Sidebar */}
         <aside
-          className={`sidebar fixed left-0 top-0 h-screen flex flex-col z-30 transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+          className={`sidebar fixed left-0 top-0 h-screen w-[260px] flex flex-col p-space-md border-r border-outline-variant z-30 transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
         >
-          <div className="sidebar-brand">
-            <div className="logo-mark">S</div>
-            <div className="logo-text">Store Explorer</div>
+          <div className="mb-space-xl px-2">
+            <h1 className="font-headline-md text-headline-md text-on-primary font-bold">Store Explorer</h1>
+            <p className="font-body-md text-body-md text-on-primary/70">Discover & Rate</p>
           </div>
           <nav className="sidebar-nav">
             <div className="nav-section">Menu</div>
@@ -120,35 +123,34 @@ export default function MainLayout() {
           </div>
         </aside>
 
-        {/* Mobile overlay */}
+        {/* Mobile drawer overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black/30 z-20 md:hidden"
+            className="sidebar-backdrop fixed inset-0 bg-black/40 backdrop-blur-sm z-20 cursor-pointer md:hidden"
             onClick={closeSidebar}
           />
         )}
 
-        {/* Main content */}
-        <div className="main-area flex-1 md:ml-[240px] pt-[56px]">
-          {/* Topbar */}
-          <header className="topbar fixed top-0 right-0 left-0 md:left-[240px] z-10">
-            {/* Mobile menu */}
+        {/* Main area */}
+        <div className="main-area flex-1 md:ml-[260px] p-margin-page overflow-y-auto pt-16">
+          <header className="topbar fixed top-0 right-0 left-0 md:left-[260px] h-16 z-10 bg-surface-bright/85 backdrop-blur-xl border-b border-outline-variant flex justify-between items-center px-gutter w-full">
+            {/* Mobile menu button */}
             <button
               type="button"
-              className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-surface-container transition-colors md:hidden"
+              className="flex items-center gap-2 md:hidden"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open menu"
             >
-              <MenuIcon size={18} />
+              <MenuIcon size={20} />
             </button>
 
-            {/* Search */}
+            {/* Desktop search (user only) */}
             {searchVisible && (
-              <div className="relative flex-1 max-w-sm">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+              <div className="relative flex-1 md:max-w-lg max-w-full mx-4">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
                 <input
-                  className="w-full h-8 pl-9 pr-3 rounded-md bg-surface-container border border-outline-variant text-on-surface text-[13px] placeholder:text-on-surface-variant/60 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-colors"
-                  placeholder="Search stores..."
+                  className="w-full h-10 pl-10 pr-12 rounded-full bg-surface-container border border-outline-variant focus:bg-surface-container-low focus:border-primary focus:ring-1 focus:ring-primary font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant transition-colors"
+                  placeholder="Search stores by name or address..."
                   value={debouncedQuery}
                   onChange={searchChange}
                   aria-label="Search stores"
@@ -156,45 +158,42 @@ export default function MainLayout() {
               </div>
             )}
 
-            {/* Spacer */}
-            <div className="flex-1" />
-
-            {/* Actions */}
-            <div className="flex items-center gap-1">
+            {/* Topbar actions */}
+            <div className="flex items-center gap-space-md">
               <button
                 type="button"
-                className="w-8 h-8 flex items-center justify-center rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+                className="w-9 h-9 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-70"
                 aria-label="Notifications"
               >
-                <NotificationsIcon size={17} />
+                <NotificationsIcon size={20} />
               </button>
 
-              {/* Theme */}
+              {/* Theme toggle */}
               <div className="relative" ref={themeDropdownRef}>
                 <button
                   type="button"
-                  className="w-8 h-8 flex items-center justify-center rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+                  className="w-9 h-9 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-70"
                   onClick={() => setThemeDropdownOpen(!themeDropdownOpen)}
                   aria-label="Toggle theme"
                 >
-                  <ThemeIcon size={17} />
+                  <ThemeIcon size={20} />
                 </button>
                 {themeDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-1 bg-surface border border-outline-variant rounded-lg shadow-lg z-50 min-w-[120px] py-1">
+                  <div className="absolute right-0 top-full mt-2 bg-surface border border-outline-variant rounded-lg shadow-lg z-50 min-w-[140px] py-1">
                     <button
                       type="button"
-                      className={`w-full text-left px-3 py-1.5 text-[12.5px] hover:bg-surface-container transition-colors flex items-center gap-2 ${theme === 'light' ? 'text-primary font-medium' : 'text-on-surface'}`}
+                      className={`w-full text-left px-3 py-2 text-[13px] hover:bg-surface-container-low transition-colors flex items-center gap-2 ${theme === 'light' ? 'bg-primary/10 text-primary font-semibold' : 'text-on-surface'}`}
                       onClick={() => { setTheme('light'); setThemeDropdownOpen(false); }}
                     >
-                      <span className="material-symbols-outlined text-[15px]">light_mode</span>
+                      <span className="material-symbols-outlined text-[16px]">light_mode</span>
                       Light
                     </button>
                     <button
                       type="button"
-                      className={`w-full text-left px-3 py-1.5 text-[12.5px] hover:bg-surface-container transition-colors flex items-center gap-2 ${theme === 'dark' ? 'text-primary font-medium' : 'text-on-surface'}`}
+                      className={`w-full text-left px-3 py-2 text-[13px] hover:bg-surface-container-low transition-colors flex items-center gap-2 ${theme === 'dark' ? 'bg-primary/10 text-primary font-semibold' : 'text-on-surface'}`}
                       onClick={() => { setTheme('dark'); setThemeDropdownOpen(false); }}
                     >
-                      <span className="material-symbols-outlined text-[15px]">dark_mode</span>
+                      <span className="material-symbols-outlined text-[16px]">dark_mode</span>
                       Dark
                     </button>
                   </div>
@@ -204,27 +203,26 @@ export default function MainLayout() {
               {/* Settings */}
               <button
                 type="button"
-                className="w-8 h-8 flex items-center justify-center rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+                className="w-9 h-9 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-70"
                 onClick={() => navigate(getChangePasswordPath(user?.role))}
                 aria-label="Settings"
               >
-                <SettingsIcon size={17} />
+                <SettingsIcon size={20} />
               </button>
 
-              {/* Divider */}
-              <div className="w-px h-5 bg-outline-variant mx-1" />
+              <div className="w-px h-6 bg-outline-variant" />
 
-              {/* User */}
+              {/* Avatar with logout */}
               <button
                 type="button"
-                className="flex items-center gap-2 py-1 px-1.5 rounded-md hover:bg-surface-container transition-colors"
+                className="flex items-center gap-space-sm cursor-pointer"
                 onClick={handleLogout}
                 aria-label="Logout"
               >
-                <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-on-primary text-[11px] font-medium flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-label-md text-label-md flex-shrink-0">
                   {initials(user?.name)}
                 </div>
-                <span className="text-[12.5px] font-medium text-on-surface hidden lg:block">
+                <span className="font-label-md text-label-md text-on-surface hidden lg:block">
                   {user?.name?.split(' ')[0]}
                 </span>
               </button>

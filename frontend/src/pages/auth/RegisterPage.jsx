@@ -79,43 +79,52 @@ export default function RegisterPage() {
     }`;
 
   return (
-    <div className="flex min-h-screen w-full bg-background text-on-background">
+    <div className="flex min-h-screen w-full bg-surface text-on-surface">
       {/* Left brand panel — identical to Login */}
       <aside className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-primary p-10 text-on-primary lg:flex">
+        <div
+          className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full opacity-20"
+          style={{ background: 'radial-gradient(closest-side, #ffffff, transparent)' }}
+        />
+        <div
+          className="pointer-events-none absolute -bottom-32 -right-24 h-[28rem] w-[28rem] rounded-full opacity-20"
+          style={{ background: 'radial-gradient(closest-side, #b4c5ff, transparent)' }}
+        />
+
         <div className="relative flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center font-bold text-sm">S</div>
-          <span className="text-[18px] font-semibold">Store Rating</span>
+          <span className="material-symbols-outlined text-[32px]">verified</span>
+          <span className="text-[20px] font-semibold tracking-tight">Store Rating</span>
         </div>
 
         <div className="relative max-w-md">
-          <h1 className="text-[30px] font-semibold leading-tight tracking-tight text-on-primary">Join the store rating community</h1>
-          <p className="mt-3 text-[15px] leading-6 text-on-primary/80">
+          <h1 className="text-[36px] font-bold leading-tight tracking-tight text-on-primary">Join the store rating community</h1>
+          <p className="mt-4 text-[16px] leading-6 text-on-primary/90">
             Create your account to start rating stores, leave honest feedback, and discover the best places to shop.
           </p>
 
-          <ul className="mt-10 space-y-3">
+          <ul className="mt-12 space-y-4">
             {FEATURES.map((f) => (
-              <li key={f.title} className="flex items-start gap-2.5">
-                <span className="material-symbols-outlined mt-0.5 text-on-primary/80 text-[18px]">{f.icon}</span>
+              <li key={f.title} className="flex items-start gap-2">
+                <span className="material-symbols-outlined mt-0.5 text-on-primary/90">{f.icon}</span>
                 <div>
-                  <div className="text-[13px] font-medium leading-4 text-on-primary">{f.title}</div>
-                  <div className="mt-0.5 text-[13px] leading-5 text-on-primary/70">{f.body}</div>
+                  <div className="text-[12px] font-medium leading-4 text-on-primary">{f.title}</div>
+                  <div className="mt-0.5 text-[14px] leading-5 text-on-primary/80">{f.body}</div>
                 </div>
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="relative text-[13px] text-on-primary/50">© 2026 Store Rating</div>
+        <div className="relative text-[14px] text-on-primary/60">© 2026 Store Rating</div>
       </aside>
 
       {/* Right form panel — mirrors Login exactly */}
-      <main className="flex flex-1 flex-col items-center justify-center bg-background px-4 py-10 lg:px-8">
+      <main className="flex flex-1 flex-col items-center justify-center bg-surface px-4 py-10 lg:px-8">
         <div className="w-full max-w-md">
           {/* Mobile brand */}
           <div className="mb-6 flex items-center gap-3 lg:hidden">
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-sm">S</div>
-            <span className="text-[18px] font-semibold text-on-surface">Store Rating</span>
+            <span className="material-symbols-outlined text-[32px] text-primary">verified</span>
+            <span className="text-[20px] font-semibold text-on-surface">Store Rating</span>
           </div>
 
           {/* Header — same pattern as Login */}
@@ -123,7 +132,7 @@ export default function RegisterPage() {
             <span className="material-symbols-outlined text-[18px] text-on-surface-variant">person_add</span>
             <span className="text-[12px] font-semibold uppercase tracking-wider text-on-surface-variant">Create account</span>
           </div>
-          <h2 className="mt-1 text-[24px] font-semibold leading-tight tracking-tight text-on-surface">Create your account</h2>
+          <h2 className="mt-1 text-[28px] font-bold leading-tight tracking-tight text-on-surface">Create your account</h2>
           <p className="mt-1 text-[14px] text-on-surface-variant">Start rating stores in minutes.</p>
 
           {/* Server error */}
